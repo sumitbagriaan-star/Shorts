@@ -1,0 +1,41 @@
+name: Daily YouTube Short Generator
+
+on:
+  schedule:
+    # UTC time â€” 3:30 UTC = 9:00 AM IST (roz subah 9 baje)
+    - cron: "30 3 * * *"
+  workflow_dispatch: {}   # ye "Run workflow" button manually chalane ke liye hai
+
+permissions:
+  contents: write   # zaroori hai taaki video repo me commit ho sake
+
+jobs:
+  generate-short:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate the short
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: python main_generate.py
+
+      - name: Commit and push generated video
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          git commit -m "Auto-generated short - $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "Nothing to commit"
+          git push
