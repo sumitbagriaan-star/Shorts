@@ -2,12 +2,16 @@ name: Daily YouTube Short Generator
 
 on:
   schedule:
-    # UTC time â€” 3:30 UTC = 9:00 AM IST (roz subah 9 baje)
     - cron: "30 3 * * *"
-  workflow_dispatch: {}   # ye "Run workflow" button manually chalane ke liye hai
+  workflow_dispatch:
+    inputs:
+      video_link:
+        description: "Optional: paste a YouTube video link to inspire the topic (leave empty for random)"
+        required: false
+        default: ""
 
 permissions:
-  contents: write   # zaroori hai taaki video repo me commit ho sake
+  contents: write
 
 jobs:
   generate-short:
@@ -30,6 +34,7 @@ jobs:
       - name: Generate the short
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          VIDEO_LINK: ${{ github.event.inputs.video_link }}
         run: python main_generate.py
 
       - name: Commit and push generated video
