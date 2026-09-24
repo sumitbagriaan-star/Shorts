@@ -34,6 +34,7 @@ jobs:
       - name: Generate the short
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           VIDEO_LINK: ${{ github.event.inputs.video_link }}
         run: python main_generate.py
 
