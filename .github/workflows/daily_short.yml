@@ -42,6 +42,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add outputs/short_*.mp4 outputs/short_*_info.txt/
+          git add outputs/short_*.mp4 outputs/short_*_info.txt
           git commit -m "Auto-generated short - $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "Nothing to commit"
           git push
