@@ -1,6 +1,6 @@
 """Gemini se bachon ki chhoti story/rhyme ka script (JSON) banwata hai."""
 import json
-import os 
+import os
 import time
 
 from google import genai
@@ -40,7 +40,8 @@ Return JSON with this shape:
     {{"narration": "text to be spoken", "image_prompt": "English description of what is shown in this scene"}}
   ]
 }}"""
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     models = [C.LLM_MODEL, "gemini-3.8-flash-lite"]
     data = None
     last_err = None
@@ -64,6 +65,7 @@ Return JSON with this shape:
             time.sleep(10 * (attempt + 1))
     if data is None:
         raise last_err
+
     scenes = data.get("scenes") or []
     if len(scenes) < 3 or not all(s.get("narration") and s.get("image_prompt") for s in scenes):
         raise ValueError("Script adhura hai, dobara try karo")
