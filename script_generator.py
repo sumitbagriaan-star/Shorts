@@ -1,6 +1,10 @@
-"""Claude se bachon ki chhoti story/rhyme ka script (JSON) banwata hai."""
+"""Gemini se bachon ki chhoti story/rhyme ka script (JSON) banwata hai."""
 import json
-import anthropic
+import os
+
+from google import genai
+from google.genai import types
+
 import config as C
 
 SYSTEM = (
@@ -35,13 +39,18 @@ Return JSON with this shape:
     {{"narration": "text to be spoken", "image_prompt": "English description of what is shown in this scene"}}
   ]
 }}"""
-    msg = anthropic.Anthropic().messages.create(
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    resp = client.models.generate_content(
         model=C.LLM_MODEL,
-        max_tokens=2500,
-        system=SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM,
+            response_mime_type="application/json",
+            max_output_tokens=8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
-    data = _parse_json(msg.content[0].text)
+    data = _parse_json(resp.text)
     scenes = data.get("scenes") or []
     if len(scenes) < 3 or not all(s.get("narration") and s.get("image_prompt") for s in scenes):
         raise ValueError("Script adhura hai, dobara try karo")
