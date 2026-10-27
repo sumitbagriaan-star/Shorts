@@ -1,6 +1,6 @@
 """Gemini se bachon ki chhoti story/rhyme ka script (JSON) banwata hai."""
 import json
-import os
+import os import time
 
 from google import genai
 from google.genai import types
