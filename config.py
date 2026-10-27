@@ -11,7 +11,7 @@ TTS_PITCH = os.getenv("TTS_PITCH", "+4Hz")  # thodi pyaari awaaz
 # --- Script (LLM) ---
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-5-5")
 SCENES = int(os.getenv("SCENES", "7"))  # 7 scenes ~ 45-55 sec
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
 # --- Video ---
 WIDTH, HEIGHT, FPS = 1080, 1920, 24
 OUT_DIR = "outputs"
