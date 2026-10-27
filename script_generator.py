@@ -39,18 +39,30 @@ Return JSON with this shape:
     {{"narration": "text to be spoken", "image_prompt": "English description of what is shown in this scene"}}
   ]
 }}"""
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    resp = client.models.generate_content(
-        model=C.LLM_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM,
-            response_mime_type="application/json",
-            max_output_tokens=8192,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
-    )
-    data = _parse_json(resp.text)
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    models = [C.LLM_MODEL, "gemini-3.8-flash-lite"]
+    data = None
+    last_err = None
+    for attempt in range(6):
+        model = models[attempt % len(models)]
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM,
+                    response_mime_type="application/json",
+                    max_output_tokens=8192,
+                ),
+            )
+            data = _parse_json(resp.text)
+            break
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            print(f"  script try {attempt + 1} fail ({model}): {e}")
+            time.sleep(10 * (attempt + 1))
+    if data is None:
+        raise last_err
     scenes = data.get("scenes") or []
     if len(scenes) < 3 or not all(s.get("narration") and s.get("image_prompt") for s in scenes):
         raise ValueError("Script adhura hai, dobara try karo")
