@@ -1,12 +1,16 @@
-"""Har scene ki cartoon image banata hai (free Pollinations service, no API key).
-Kisi aur service (OpenAI, Stability, etc.) se badalna ho to sirf generate_image() badlo."""
+"""Har scene ki cartoon image banata hai.
+Pehle Hugging Face FLUX (free, HF_TOKEN), phir Google Imagen (GEMINI_API_KEY), warna placeholder."""
 import io
+import os
 import time
-from urllib.parse import quote
 
 import requests
 from PIL import Image, ImageDraw
+
 import config as C
+
+HF_MODEL = os.getenv("HF_MODEL", "black-forest-labs/FLUX.1-schnell")
+IMAGEN_MODEL = os.getenv("IMAGE_MODEL", "imagen-3.0-generate-002")
 
 
 def _cover_resize(img):
@@ -27,20 +31,48 @@ def _placeholder():
     return img
 
 
-def generate_image(prompt, path, seed):
-    url = (
-        f"https://image.pollinations.ai/prompt/{quote(prompt)}"
-        f"?width={C.WIDTH}&height={C.HEIGHT}&seed={seed}&nologo=true"
+def _hf_image(prompt, seed):
+    url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
+    headers = {"Authorization": f"Bearer {os.environ['HF_TOKEN']}"}
+    payload = {
+        "inputs": prompt,
+        "parameters": {"width": 576, "height": 1024, "seed": seed},
+    }
+    r = requests.post(url, headers=headers, json=payload, timeout=180)
+    r.raise_for_status()
+    return r.content
+
+
+def _imagen_image(prompt):
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    resp = client.models.generate_images(
+        model=IMAGEN_MODEL,
+        prompt=prompt,
+        config=types.GenerateImagesConfig(number_of_images=1, aspect_ratio="9:16"),
     )
+    return resp.generated_images[0].image.image_bytes
+
+
+def generate_image(prompt, path, seed):
+    methods = []
+    if os.getenv("HF_TOKEN"):
+        methods.append(("huggingface", lambda: _hf_image(prompt, seed)))
+    if os.getenv("GEMINI_API_KEY"):
+        methods.append(("imagen", lambda: _imagen_image(prompt)))
+
     for attempt in range(4):
-        try:
-            r = requests.get(url, timeout=180)
-            r.raise_for_status()
-            _cover_resize(Image.open(io.BytesIO(r.content))).save(path, quality=92)
-            return path
-        except Exception as e:  # noqa: BLE001
-            print(f"  image try {attempt + 1} fail: {e}")
-            time.sleep(5 * (attempt + 1))
+        for name, fn in methods:
+            try:
+                data = fn()
+                _cover_resize(Image.open(io.BytesIO(data))).save(path, quality=92)
+                return path
+            except Exception as e:  # noqa: BLE001
+                print(f"  image try {attempt + 1} ({name}) fail: {e}")
+        time.sleep(5 * (attempt + 1))
+
     print("  image nahi bani, placeholder laga raha hoon")
     _placeholder().save(path, quality=92)
     return path
