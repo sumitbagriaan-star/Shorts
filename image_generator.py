@@ -1,5 +1,4 @@
-"""Har scene ki cartoon image banata hai.
-Pehle Hugging Face FLUX (free, HF_TOKEN), phir Google Imagen (GEMINI_API_KEY), warna placeholder."""
+"""Har scene ki cartoon image banata hai (Hugging Face, HF_TOKEN se). Fail ho to placeholder."""
 import io
 import os
 import time
@@ -9,8 +8,16 @@ from PIL import Image, ImageDraw
 
 import config as C
 
-HF_MODEL = os.getenv("HF_MODEL", "black-forest-labs/FLUX.1-schnell")
-IMAGEN_MODEL = os.getenv("IMAGE_MODEL", "imagen-3.0-generate-002")
+HF_MODELS = [
+    m.strip()
+    for m in os.getenv(
+        "HF_MODELS",
+        "stabilityai/stable-diffusion-xl-base-1.0,"
+        "black-forest-labs/FLUX.1-dev,"
+        "stabilityai/stable-diffusion-3.5-large",
+    ).split(",")
+    if m.strip()
+]
 
 
 def _cover_resize(img):
@@ -31,48 +38,20 @@ def _placeholder():
     return img
 
 
-def _hf_image(prompt, seed):
-    url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
+def _hf_image(model, prompt, seed):
+    url = f"https://router.huggingface.co/hf-inference/models/{model}"
     headers = {"Authorization": f"Bearer {os.environ['HF_TOKEN']}"}
     payload = {
         "inputs": prompt,
-        "parameters": {"width": 576, "height": 1024, "seed": seed},
+        "parameters": {"width": 768, "height": 1344, "seed": seed},
     }
     r = requests.post(url, headers=headers, json=payload, timeout=180)
     r.raise_for_status()
     return r.content
 
 
-def _imagen_image(prompt):
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    resp = client.models.generate_images(
-        model=IMAGEN_MODEL,
-        prompt=prompt,
-        config=types.GenerateImagesConfig(number_of_images=1, aspect_ratio="9:16"),
-    )
-    return resp.generated_images[0].image.image_bytes
-
-
 def generate_image(prompt, path, seed):
-    methods = []
     if os.getenv("HF_TOKEN"):
-        methods.append(("huggingface", lambda: _hf_image(prompt, seed)))
-    if os.getenv("GEMINI_API_KEY"):
-        methods.append(("imagen", lambda: _imagen_image(prompt)))
-
-    for attempt in range(4):
-        for name, fn in methods:
-            try:
-                data = fn()
-                _cover_resize(Image.open(io.BytesIO(data))).save(path, quality=92)
-                return path
-            except Exception as e:  # noqa: BLE001
-                print(f"  image try {attempt + 1} ({name}) fail: {e}")
-        time.sleep(5 * (attempt + 1))
-
-    print("  image nahi bani, placeholder laga raha hoon")
-    _placeholder().save(path, quality=92)
-    return path
+        for attempt in range(3):
+            for model in HF_MODELS:
+                try:
